@@ -45,18 +45,18 @@ public class AuthController : ControllerBase
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
     
+    // Liste med mockdata brugere.
+    private static List<LoginModel> users = new List<LoginModel>
+    {
+        new LoginModel { Email = "test@test.com", Password = "1234" }
+    };
+    
     // Login endpoint, der tager en email og et password som parametre
     // og sender en token tilbage med adgang til sider der kræver authorisation.
     [AllowAnonymous]
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginModel login)
     {
-        // Eksempel på brugerdata
-        var users = new List<LoginModel>
-        {
-            new LoginModel { Email = "test@test.com", Password = "1234" },
-            new LoginModel { Email = "user@test.com", Password = "abcd" }
-        };
         
         // Her tages brugerinput og der tjekkes om dette passer på de brugere der findes.
         var user = users.FirstOrDefault(u =>
@@ -73,6 +73,31 @@ public class AuthController : ControllerBase
 
         return Unauthorized();
     }
-    
-    
+
+    [AllowAnonymous]
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromBody] LoginModel register)
+    {
+        // Tjek om email allerede findes
+        var existingUser = users.FirstOrDefault(u => u.Email == register.Email);
+
+        if (existingUser != null)
+        {
+            return BadRequest("Brugeren findes allerede.");
+        }
+
+        // Opret ny bruger
+        var newUser = new LoginModel
+        {
+            Email = register.Email,
+            Password = register.Password
+        };
+
+        users.Add(newUser);
+
+        return Ok(new
+        {
+            message = "Bruger oprettet succesfuldt."
+        });
+    }
 }
