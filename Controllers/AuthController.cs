@@ -2,8 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using AuthService.Models;
+using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AuthService.Controllers;
@@ -45,11 +47,7 @@ public class AuthController : ControllerBase
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
     
-    // Liste med mockdata brugere.
-    private static List<LoginModel> users = new List<LoginModel>
-    {
-        new LoginModel { Email = "test@test.com", Password = "1234" }
-    };
+    private static List<UserModel> users = new();
     
     // Login endpoint, der tager en email og et password som parametre
     // og sender en token tilbage med adgang til sider der kræver authorisation.
@@ -59,19 +57,29 @@ public class AuthController : ControllerBase
     {
         
         // Her tages brugerinput og der tjekkes om dette passer på de brugere der findes.
-        var user = users.FirstOrDefault(u =>
-            u.Email == login.Email &&
-            u.Password == login.Password);
+        var user = users.FirstOrDefault(u => u.Email == login.Email);
         
-        // Hvis user ikke er null får man en token.
-        // Hvis user er null eller forkert får man ikke en token.
-        if (user != null)
+        // Hvis user er null får man ikke en token.
+        if (user == null)
         {
-            var token = GenerateJwtToken(user.Email);
-            return Ok(new { token });
+            return Unauthorized();
         }
+        
+        // Hash det password brugeren skriver
+        string hashedInputPassword = Convert.ToBase64String(KeyDerivation.Pbkdf2(
+            password: login.Password,
+            salt: Convert.FromBase64String(user.Salt),
+            prf: KeyDerivationPrf.HMACSHA256,
+            iterationCount: 100000,
+            numBytesRequested: 256 / 8));
 
-        return Unauthorized();
+        if (hashedInputPassword != user.PasswordHash)
+        {
+            return Unauthorized();
+        }
+        var token = GenerateJwtToken(user.Email);
+
+        return Ok(new { token });
     }
 
     [AllowAnonymous]
@@ -85,12 +93,31 @@ public class AuthController : ControllerBase
         {
             return BadRequest("Brugeren findes allerede.");
         }
+        
+        // Lav salt
+        byte[] saltBytes = new byte[128 / 8];
 
-        // Opret ny bruger
-        var newUser = new LoginModel
+        using (var rng = RandomNumberGenerator.Create())
+        {
+            rng.GetNonZeroBytes(saltBytes);
+        }
+
+        string salt = Convert.ToBase64String(saltBytes);
+        
+        // Hash password
+        string hashed = Convert.ToBase64String(KeyDerivation.Pbkdf2(
+            password: register.Password,
+            salt: Convert.FromBase64String(salt),
+            prf: KeyDerivationPrf.HMACSHA256,
+            iterationCount: 100000,
+            numBytesRequested: 256 / 8));
+        
+        // Gem bruger
+        var newUser = new UserModel
         {
             Email = register.Email,
-            Password = register.Password
+            PasswordHash = hashed,
+            Salt = salt
         };
 
         users.Add(newUser);
