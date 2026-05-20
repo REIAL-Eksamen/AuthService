@@ -7,9 +7,16 @@ namespace AuthService.Controllers;
 [Route("[controller]")]
 public class TestController : ControllerBase
 {
-    [Authorize]
-    [HttpGet]
-    public IActionResult Get()
+    [Authorize(Roles = "Admin")]
+    [HttpGet("admin")]
+    public IActionResult GetAdmin()
+    {
+        return Ok("You're authorized");
+    }
+    
+    [Authorize(Roles = "User")]
+    [HttpGet("user")]
+    public IActionResult GetUser()
     {
         return Ok("You're authorized");
     }

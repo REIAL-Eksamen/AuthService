@@ -28,22 +28,30 @@ public class AuthController : ControllerBase
     // Vi har en Issuer som er den der udsteder tokenen.
     // Vores Secret skal være LANG for at virke, denne hashes så med SHA256.
     // Tokenen er knyttet til email'en.
-    private string GenerateJwtToken(string email)
+    private string GenerateJwtToken(string email, string role)
     {
         var securityKey =
-            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Secret"]));
+            new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(_config["Secret"]));
+        
         var credentials =
-            new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+            new SigningCredentials(
+                securityKey,
+                SecurityAlgorithms.HmacSha256);
+        
         var claims = new[]
         {
-            new Claim(ClaimTypes.NameIdentifier, email)
+            new Claim(ClaimTypes.NameIdentifier, email),
+            new Claim(ClaimTypes.Role, role)
         };
+        
         var token = new JwtSecurityToken(
             _config["Issuer"],
             "http://localhost",
             claims,
             expires: DateTime.Now.AddMinutes(15),
             signingCredentials: credentials);
+        
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
     
@@ -77,7 +85,7 @@ public class AuthController : ControllerBase
         {
             return Unauthorized();
         }
-        var token = GenerateJwtToken(user.Email);
+        var token = GenerateJwtToken(user.Email, user.Role);
 
         return Ok(new { token });
     }
@@ -117,7 +125,8 @@ public class AuthController : ControllerBase
         {
             Email = register.Email,
             PasswordHash = hashed,
-            Salt = salt
+            Salt = salt,
+            Role = register.Role
         };
 
         users.Add(newUser);
