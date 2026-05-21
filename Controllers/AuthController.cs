@@ -15,13 +15,15 @@ namespace AuthService.Controllers;
 public class AuthController : ControllerBase
 {
     
-    private readonly IConfiguration _config;
     private readonly ILogger<AuthController> _logger;
+    private readonly JwtSettings _jwt;
     
-    public AuthController(ILogger<AuthController> logger, IConfiguration config)
+    public AuthController(
+        ILogger<AuthController> logger,
+        JwtSettings jwt)
     {
-        _config = config;
         _logger = logger;
+        _jwt = jwt;
     }
     
     // Her genereres en JWT token, som bestemmer hvor meget der gives adgang til og hvor længe.
@@ -32,7 +34,7 @@ public class AuthController : ControllerBase
     {
         var securityKey =
             new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(_config["Secret"]));
+                Encoding.UTF8.GetBytes(_jwt.Secret));
         
         var credentials =
             new SigningCredentials(
@@ -46,7 +48,7 @@ public class AuthController : ControllerBase
         };
         
         var token = new JwtSecurityToken(
-            _config["Issuer"],
+            _jwt.Issuer,
             "http://localhost",
             claims,
             expires: DateTime.Now.AddMinutes(15),
