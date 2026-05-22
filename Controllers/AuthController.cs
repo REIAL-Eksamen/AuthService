@@ -17,13 +17,16 @@ public class AuthController : ControllerBase
     
     private readonly ILogger<AuthController> _logger;
     private readonly JwtSettings _jwt;
+    private readonly Services.AuthService _db;
     
     public AuthController(
         ILogger<AuthController> logger,
-        JwtSettings jwt)
+        JwtSettings jwt,
+        Services.AuthService db)
     {
         _logger = logger;
         _jwt = jwt;
+        _db = db;
     }
     
     // Her genereres en JWT token, som bestemmer hvor meget der gives adgang til og hvor længe.
@@ -59,6 +62,7 @@ public class AuthController : ControllerBase
     
     private static List<UserModel> users = new();
     
+    // LOGIN
     // Login endpoint, der tager en email og et password som parametre
     // og sender en token tilbage med adgang til sider der kræver authorisation.
     [AllowAnonymous]
@@ -67,7 +71,7 @@ public class AuthController : ControllerBase
     {
         
         // Her tages brugerinput og der tjekkes om dette passer på de brugere der findes.
-        var user = users.FirstOrDefault(u => u.Email == login.Email);
+        var user = await _db.GetByEmailAsync(login.Email);
         
         // Hvis user er null får man ikke en token.
         if (user == null)
@@ -91,13 +95,14 @@ public class AuthController : ControllerBase
 
         return Ok(new { token });
     }
-
+    
+    // REGISTER
     [AllowAnonymous]
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] LoginModel register)
     {
         // Tjek om email allerede findes
-        var existingUser = users.FirstOrDefault(u => u.Email == register.Email);
+        var existingUser = await _db.GetByEmailAsync(register.Email);
 
         if (existingUser != null)
         {
@@ -131,7 +136,7 @@ public class AuthController : ControllerBase
             Role = register.Role
         };
 
-        users.Add(newUser);
+        await _db.CreateUserAsync(newUser);
 
         return Ok(new
         {

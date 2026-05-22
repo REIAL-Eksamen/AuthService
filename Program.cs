@@ -45,6 +45,7 @@ var jwtSettings = new JwtSettings
 };
 
 builder.Services.AddSingleton(jwtSettings);
+builder.Services.AddSingleton<AuthService.Services.AuthService>();
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
