@@ -9,16 +9,20 @@ using VaultSharp.V1.AuthMethods.Token;
 
 var builder = WebApplication.CreateBuilder(args);
 
-string vaultUrl = "https://localhost:8201/";
 var httpClientHandler = new HttpClientHandler();
 
 httpClientHandler.ServerCertificateCustomValidationCallback =
     (message, cert, chain, sslPolicyErrors) => { return true; };
 
-string vaultToken = Environment.GetEnvironmentVariable("VAULT_TOKEN")
-    ?? throw new Exception("VAULT_TOKEN mangler");
+// FORBINDELSEN TIL VAULT
 
-IAuthMethodInfo authMethod = new TokenAuthMethodInfo("00000000-0000-0000-0000-000000000000");
+string vaultUrl = Environment.GetEnvironmentVariable("VAULT_ADDR")
+                  ?? throw new Exception("VAULT_ADDR mangler");
+
+string vaultToken = Environment.GetEnvironmentVariable("VAULT_TOKEN")
+                    ?? throw new Exception("VAULT_TOKEN mangler");
+
+IAuthMethodInfo authMethod = new TokenAuthMethodInfo(vaultToken);
 
 var vaultClientSettings = new VaultClientSettings(vaultUrl, authMethod)
 {
