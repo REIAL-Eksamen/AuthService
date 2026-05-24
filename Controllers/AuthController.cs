@@ -7,6 +7,7 @@ using System.Text;
 using AuthService.Models;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using Microsoft.AspNetCore.Mvc;
+using AuthService.DTOs;
 
 namespace AuthService.Controllers;
 
@@ -67,7 +68,7 @@ public class AuthController : ControllerBase
     // og sender en token tilbage med adgang til sider der kræver authorisation.
     [AllowAnonymous]
     [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginModel login)
+    public async Task<IActionResult> Login([FromBody] LoginDto login)
     {
         
         // Her tages brugerinput og der tjekkes om dette passer på de brugere der findes.
@@ -99,7 +100,7 @@ public class AuthController : ControllerBase
     // REGISTER
     [AllowAnonymous]
     [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] LoginModel register)
+    public async Task<IActionResult> Register([FromBody] RegisterDto register)
     {
         // Tjek om email allerede findes
         var existingUser = await _db.GetByEmailAsync(register.Email);
@@ -133,7 +134,7 @@ public class AuthController : ControllerBase
             Email = register.Email,
             PasswordHash = hashed,
             Salt = salt,
-            Role = register.Role
+            Role = "User"
         };
 
         await _db.CreateUserAsync(newUser);
