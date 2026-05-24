@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using System.Net.Http.Json;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -19,15 +20,18 @@ public class AuthController : ControllerBase
     private readonly ILogger<AuthController> _logger;
     private readonly JwtSettings _jwt;
     private readonly Services.AuthService _db;
+    private readonly HttpClient _httpClient;
     
     public AuthController(
         ILogger<AuthController> logger,
         JwtSettings jwt,
-        Services.AuthService db)
+        Services.AuthService db,
+        HttpClient httpClient)
     {
         _logger = logger;
         _jwt = jwt;
         _db = db;
+        _httpClient = httpClient;
     }
     
     // Her genereres en JWT token, som bestemmer hvor meget der gives adgang til og hvor længe.
@@ -136,8 +140,24 @@ public class AuthController : ControllerBase
             Salt = salt,
             Role = "User"
         };
-
+        
         await _db.CreateUserAsync(newUser);
+        
+        var registerDto = new RegisterDto
+        {
+            AuthId = newUser.Id,
+            FirstName = register.FirstName,
+            LastName = register.LastName,
+            Email = register.Email,
+            PhoneNumber = register.PhoneNumber,
+            Membership = MembershipType.Standard,
+            MembershipStatus = MembershipStatus.Active
+        };
+
+        await _httpClient.PostAsJsonAsync(
+            "https://localhost:5002/api/users",
+            registerDto
+        );
 
         return Ok(new
         {
