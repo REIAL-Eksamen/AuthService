@@ -20,3 +20,12 @@
       - .env
     depends_on:
       - vault
+      - user-service
+  
+  user-service:
+    build:
+      context: ../UserService/UserService
+    ports:
+      - "5047:8080"
+    env_file:
+      - .env

@@ -5,10 +5,12 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using AuthService.Models;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using Microsoft.AspNetCore.Mvc;
 using AuthService.DTOs;
+using MongoDB.Bson;
 
 namespace AuthService.Controllers;
 
@@ -104,10 +106,10 @@ public class AuthController : ControllerBase
     // REGISTER
     [AllowAnonymous]
     [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] RegisterDto register)
+    public async Task<IActionResult> Register([FromBody] CreateUserDto createUser)
     {
         // Tjek om email allerede findes
-        var existingUser = await _db.GetByEmailAsync(register.Email);
+        var existingUser = await _db.GetByEmailAsync(createUser.Email);
 
         if (existingUser != null)
         {
@@ -126,16 +128,18 @@ public class AuthController : ControllerBase
         
         // Hash password
         string hashed = Convert.ToBase64String(KeyDerivation.Pbkdf2(
-            password: register.Password,
+            password: createUser.Password,
             salt: Convert.FromBase64String(salt),
             prf: KeyDerivationPrf.HMACSHA256,
             iterationCount: 100000,
             numBytesRequested: 256 / 8));
-        
+
+        var authId = ObjectId.GenerateNewId().ToString();
         // Gem bruger
         var newUser = new UserModel
         {
-            Email = register.Email,
+            Id = authId,
+            Email = createUser.Email,
             PasswordHash = hashed,
             Salt = salt,
             Role = "User"
@@ -143,20 +147,23 @@ public class AuthController : ControllerBase
         
         await _db.CreateUserAsync(newUser);
         
-        var registerDto = new RegisterDto
+        var createUserDto = new CreateUserDto
         {
-            AuthId = newUser.Id,
-            FirstName = register.FirstName,
-            LastName = register.LastName,
-            Email = register.Email,
-            PhoneNumber = register.PhoneNumber,
-            Membership = MembershipType.Standard,
-            MembershipStatus = MembershipStatus.Active
+            AuthId = authId,
+            FirstName = createUser.FirstName,
+            LastName = createUser.LastName,
+            Email = createUser.Email,
+            PhoneNumber = createUser.PhoneNumber,
+            Membership = createUser.Membership,
+            MembershipStatus = createUser.MembershipStatus
         };
-
+        
+        Console.WriteLine(JsonSerializer.Serialize(createUserDto));
+        
+// DET ER HER DER SKAL RETTES ADDRESSE
         await _httpClient.PostAsJsonAsync(
-            "https://localhost:5002/api/users",
-            registerDto
+            "http://user-service:8080/api/users",
+            createUserDto
         );
 
         return Ok(new

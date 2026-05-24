@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace AuthService.DTOs;
 
 // Til dig der kigger med og tænker
@@ -5,9 +7,9 @@ namespace AuthService.DTOs;
 // Det er fordi at disse data sendes gennem AuthService
 // Så derfor skal vi lige bruge en model til det
 
-public class RegisterDto
+public class CreateUserDto
 {
-    public string AuthId { get; set; } = "";
+    public string? AuthId { get; set; }
     public string Email { get; set; } = "";
 
     public string Password { get; set; } = "";
