@@ -1,13 +1,16 @@
 using Microsoft.AspNetCore.Authorization;
+using System.Net.Http.Json;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using AuthService.Models;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using Microsoft.AspNetCore.Mvc;
 using AuthService.DTOs;
+using MongoDB.Bson;
 
 namespace AuthService.Controllers;
 
@@ -19,15 +22,18 @@ public class AuthController : ControllerBase
     private readonly ILogger<AuthController> _logger;
     private readonly JwtSettings _jwt;
     private readonly Services.AuthService _db;
+    private readonly HttpClient _httpClient;
     
     public AuthController(
         ILogger<AuthController> logger,
         JwtSettings jwt,
-        Services.AuthService db)
+        Services.AuthService db,
+        HttpClient httpClient)
     {
         _logger = logger;
         _jwt = jwt;
         _db = db;
+        _httpClient = httpClient;
     }
     
     // Her genereres en JWT token, som bestemmer hvor meget der gives adgang til og hvor længe.
@@ -100,10 +106,10 @@ public class AuthController : ControllerBase
     // REGISTER
     [AllowAnonymous]
     [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] RegisterDto register)
+    public async Task<IActionResult> Register([FromBody] CreateUserDto createUser)
     {
         // Tjek om email allerede findes
-        var existingUser = await _db.GetByEmailAsync(register.Email);
+        var existingUser = await _db.GetByEmailAsync(createUser.Email);
 
         if (existingUser != null)
         {
@@ -122,22 +128,43 @@ public class AuthController : ControllerBase
         
         // Hash password
         string hashed = Convert.ToBase64String(KeyDerivation.Pbkdf2(
-            password: register.Password,
+            password: createUser.Password,
             salt: Convert.FromBase64String(salt),
             prf: KeyDerivationPrf.HMACSHA256,
             iterationCount: 100000,
             numBytesRequested: 256 / 8));
-        
+
+        var authId = ObjectId.GenerateNewId().ToString();
         // Gem bruger
         var newUser = new UserModel
         {
-            Email = register.Email,
+            Id = authId,
+            Email = createUser.Email,
             PasswordHash = hashed,
             Salt = salt,
             Role = "User"
         };
-
+        
         await _db.CreateUserAsync(newUser);
+        
+        var createUserDto = new CreateUserDto
+        {
+            AuthId = authId,
+            FirstName = createUser.FirstName,
+            LastName = createUser.LastName,
+            Email = createUser.Email,
+            PhoneNumber = createUser.PhoneNumber,
+            Membership = createUser.Membership,
+            MembershipStatus = createUser.MembershipStatus
+        };
+        
+        Console.WriteLine(JsonSerializer.Serialize(createUserDto));
+        
+// DET ER HER DER SKAL RETTES ADDRESSE
+        await _httpClient.PostAsJsonAsync(
+            "http://user-service:8080/api/users",
+            createUserDto
+        );
 
         return Ok(new
         {
