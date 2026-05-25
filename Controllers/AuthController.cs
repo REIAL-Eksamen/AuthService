@@ -41,7 +41,7 @@ public class AuthController : ControllerBase
     // Vi har en Issuer som er den der udsteder tokenen.
     // Vores Secret skal være LANG for at virke, denne hashes så med SHA256.
     // Tokenen er knyttet til email'en.
-    private string GenerateJwtToken(string email, string role)
+    private string GenerateJwtToken(string userId, string email, string role)
     {
         var securityKey =
             new SymmetricSecurityKey(
@@ -54,7 +54,8 @@ public class AuthController : ControllerBase
         
         var claims = new[]
         {
-            new Claim(ClaimTypes.NameIdentifier, email),
+            new Claim(ClaimTypes.NameIdentifier, userId),
+            new Claim(ClaimTypes.Email, email),
             new Claim(ClaimTypes.Role, role)
         };
         
@@ -73,35 +74,41 @@ public class AuthController : ControllerBase
     // LOGIN
     // Login endpoint, der tager en email og et password som parametre
     // og sender en token tilbage med adgang til sider der kræver authorisation.
-    [AllowAnonymous]
     [HttpPost("login")]
+    [AllowAnonymous]
     public async Task<IActionResult> Login([FromBody] LoginDto login)
     {
-        
-        // Her tages brugerinput og der tjekkes om dette passer på de brugere der findes.
-        var user = await _db.GetByEmailAsync(login.Email);
-        
-        // Hvis user er null får man ikke en token.
-        if (user == null)
+        try
         {
-            return Unauthorized();
-        }
-        
-        // Hash det password brugeren skriver
-        string hashedInputPassword = Convert.ToBase64String(KeyDerivation.Pbkdf2(
-            password: login.Password,
-            salt: Convert.FromBase64String(user.Salt),
-            prf: KeyDerivationPrf.HMACSHA256,
-            iterationCount: 100000,
-            numBytesRequested: 256 / 8));
+            var user = await _db.GetByEmailAsync(login.Email);
 
-        if (hashedInputPassword != user.PasswordHash)
+            if (user == null) return Unauthorized();
+            if (string.IsNullOrWhiteSpace(login.Password)) return Unauthorized();
+
+            var saltBytes = Convert.FromBase64String(user.Salt);
+
+            var hashedInputPassword = Convert.ToBase64String(KeyDerivation.Pbkdf2(
+                password: login.Password,
+                salt: saltBytes,
+                prf: KeyDerivationPrf.HMACSHA256,
+                iterationCount: 100000,
+                numBytesRequested: 256 / 8));
+
+            if (hashedInputPassword != user.PasswordHash)
+                return Unauthorized();
+
+            if (string.IsNullOrWhiteSpace(user.Id))
+                return Unauthorized();
+
+            var token = GenerateJwtToken(user.Id, user.Email, user.Role ?? "User");
+
+            return Ok(new LoginResponseDto { Token = token });
+        }
+        catch (Exception ex)
         {
-            return Unauthorized();
+            _logger.LogError(ex, "LOGIN FAILED for {Email}", login.Email);
+            return StatusCode(500, ex.ToString());
         }
-        var token = GenerateJwtToken(user.Email, user.Role);
-
-        return Ok(new { token });
     }
     
     // REGISTER

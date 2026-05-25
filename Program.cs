@@ -1,6 +1,7 @@
 using Scalar.AspNetCore;
 using System.Text;
 using AuthService.Models;
+using AuthService.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using VaultSharp;
@@ -49,7 +50,11 @@ var jwtSettings = new JwtSettings
 };
 
 builder.Services.AddSingleton(jwtSettings);
-builder.Services.AddSingleton<AuthService.Services.AuthService>();
+
+builder.Services.AddScoped<AuthService.Services.AuthService>();
+
+builder.Services.AddScoped<IAuthService, AuthService.Services.AuthService>();
+
 builder.Services.AddHttpClient();
 
 builder.Services
