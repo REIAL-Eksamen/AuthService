@@ -3,7 +3,7 @@ using MongoDB.Driver;
 
 namespace AuthService.Services;
 
-public class AuthService
+public class AuthService : IAuthService
 {
     private readonly IMongoCollection<UserModel> _users;
 

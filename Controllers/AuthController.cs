@@ -10,6 +10,7 @@ using AuthService.Models;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using Microsoft.AspNetCore.Mvc;
 using AuthService.DTOs;
+using AuthService.Services;
 using MongoDB.Bson;
 
 namespace AuthService.Controllers;
@@ -21,13 +22,13 @@ public class AuthController : ControllerBase
     
     private readonly ILogger<AuthController> _logger;
     private readonly JwtSettings _jwt;
-    private readonly Services.AuthService _db;
+    private readonly IAuthService _db;
     private readonly HttpClient _httpClient;
     
     public AuthController(
         ILogger<AuthController> logger,
         JwtSettings jwt,
-        Services.AuthService db,
+        IAuthService db,
         HttpClient httpClient)
     {
         _logger = logger;
