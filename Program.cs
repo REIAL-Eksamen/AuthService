@@ -1,6 +1,7 @@
 using Scalar.AspNetCore;
 using System.Text;
 using AuthService.Models;
+using AuthService.Repositories;
 using AuthService.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -54,6 +55,8 @@ builder.Services.AddSingleton(jwtSettings);
 builder.Services.AddScoped<AuthService.Services.AuthService>();
 
 builder.Services.AddScoped<IAuthService, AuthService.Services.AuthService>();
+
+builder.Services.AddScoped<IAuthRepository, MongoAuthRepository>();
 
 builder.Services.AddHttpClient();
 
