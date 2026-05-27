@@ -144,9 +144,9 @@ public class AuthService : IAuthService
         };
 
         var token = new JwtSecurityToken(
-            _jwt.Issuer,
-            "FitLifeUsers",
-            claims,
+            issuer: _jwt.Issuer, 
+            audience: "FitLifeUsers",
+            claims: claims,
             expires: DateTime.Now.AddMinutes(15),
             signingCredentials: credentials);
 

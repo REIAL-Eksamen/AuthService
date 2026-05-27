@@ -72,7 +72,7 @@ builder.Services
             ValidateIssuerSigningKey = true,
             
             ValidIssuer = jwtSettings.Issuer,
-            ValidAudience = "http://localhost",
+            ValidAudience = "FitLifeUsers",
             
             IssuerSigningKey =
                 new SymmetricSecurityKey(
