@@ -39,7 +39,8 @@ public class AuthService : IAuthService
 
     public async Task<string?> LoginAsync(LoginDto login)
     {
-        var user = await _repository.GetByEmailAsync(login.Email);
+        var email = login.Email.Trim().ToLowerInvariant();
+        var user = await _repository.GetByEmailAsync(email);
 
         if (user == null)
             return null;
@@ -68,6 +69,7 @@ public class AuthService : IAuthService
 
     public async Task<bool> RegisterAsync(CreateUserDto createUser)
     {
+        createUser.Email = createUser.Email.Trim().ToLowerInvariant();
         var existingUser =
             await _repository.GetByEmailAsync(createUser.Email);
 
