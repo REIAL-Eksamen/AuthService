@@ -115,9 +115,14 @@ public class AuthService : IAuthService
             MembershipStatus = createUser.MembershipStatus
         };
 
-        await _httpClient.PostAsJsonAsync(
-            "http://user-service:8080/api/users",
+        var userResponse = await _httpClient.PostAsJsonAsync(
+            "http://userservice:8080/api/users",
             userDto);
+
+        if (!userResponse.IsSuccessStatusCode)
+        {
+            return false;
+        }
 
         return true;
     }
