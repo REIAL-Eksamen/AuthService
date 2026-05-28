@@ -3,8 +3,10 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using AuthService.DTOs;
+using FitLife.Events;
 using AuthService.Models;
 using AuthService.Repositories;
+using MassTransit;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Bson;
@@ -15,16 +17,16 @@ public class AuthService : IAuthService
 {
     private readonly IAuthRepository _repository;
     private readonly JwtSettings _jwt;
-    private readonly HttpClient _httpClient;
+    private readonly IPublishEndpoint _publishEndpoint;
 
     public AuthService(
         IAuthRepository repository,
         JwtSettings jwt,
-        HttpClient httpClient)
+        IPublishEndpoint publishEndpoint)
     {
         _repository = repository;
         _jwt = jwt;
-        _httpClient = httpClient;
+        _publishEndpoint = publishEndpoint;
     }
 
     public Task<UserModel?> GetByEmailAsync(string email)
@@ -104,25 +106,16 @@ public class AuthService : IAuthService
 
         await _repository.CreateUserAsync(newUser);
 
-        var userDto = new CreateUserDto
+        await _publishEndpoint.Publish(new UserRegisteredEvent
         {
             AuthId = authId,
-            FirstName = createUser.FirstName,
-            LastName = createUser.LastName,
             Email = createUser.Email,
+            FirstName = createUser.FirstName ?? "",
+            LastName = createUser.LastName ?? "",
             PhoneNumber = createUser.PhoneNumber,
-            Membership = createUser.Membership,
-            MembershipStatus = createUser.MembershipStatus
-        };
-
-        var userResponse = await _httpClient.PostAsJsonAsync(
-            "http://userservice:8080/api/users",
-            userDto);
-
-        if (!userResponse.IsSuccessStatusCode)
-        {
-            return false;
-        }
+            Membership = createUser.Membership.ToString(),
+            MembershipStatus = createUser.MembershipStatus.ToString()
+        });
 
         return true;
     }

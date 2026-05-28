@@ -1,3 +1,4 @@
+using MassTransit;
 using Scalar.AspNetCore;
 using System.Text;
 using AuthService.Models;
@@ -58,7 +59,18 @@ builder.Services.AddScoped<IAuthService, AuthService.Services.AuthService>();
 
 builder.Services.AddScoped<IAuthRepository, MongoAuthRepository>();
 
-builder.Services.AddHttpClient();
+builder.Services.AddMassTransit(x =>
+{
+    x.UsingRabbitMq((context, cfg) =>
+    {
+        cfg.Host(builder.Configuration["RabbitMQ:Host"] ?? "rabbitmq", "/", h =>
+        {
+            h.Username("guest");
+            h.Password("guest");
+        });
+        cfg.ConfigureEndpoints(context);
+    });
+});
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
