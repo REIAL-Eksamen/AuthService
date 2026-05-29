@@ -145,7 +145,7 @@ public class AuthService : IAuthService
             issuer: _jwt.Issuer, 
             audience: "FitLifeUsers",
             claims: claims,
-            expires: DateTime.Now.AddMinutes(15),
+            expires: DateTime.Now.AddHours(15),
             signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);

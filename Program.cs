@@ -6,49 +6,16 @@ using AuthService.Repositories;
 using AuthService.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using VaultSharp;
-using VaultSharp.V1.AuthMethods;
-using VaultSharp.V1.AuthMethods.Token;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var httpClientHandler = new HttpClientHandler();
-
-httpClientHandler.ServerCertificateCustomValidationCallback =
-    (message, cert, chain, sslPolicyErrors) => { return true; };
-
-// FORBINDELSEN TIL VAULT
-
-string vaultUrl = Environment.GetEnvironmentVariable("VAULT_ADDR")
-                  ?? throw new Exception("VAULT_ADDR mangler");
-
-string vaultToken = Environment.GetEnvironmentVariable("VAULT_TOKEN")
-                    ?? throw new Exception("VAULT_TOKEN mangler");
-
-IAuthMethodInfo authMethod = new TokenAuthMethodInfo(vaultToken);
-
-var vaultClientSettings = new VaultClientSettings(vaultUrl, authMethod)
-{
-    Namespace = "",
-    MyHttpClientProviderFunc = handler
-    => new HttpClient(httpClientHandler)
-    {
-        BaseAddress = new Uri(vaultUrl)
-    }
-};
-
-IVaultClient vaultClient = new VaultClient(vaultClientSettings);
-
-var secret = await vaultClient.V1.Secrets.KeyValue.V2.
-    ReadSecretAsync(path: "jwt", mountPoint: "secret");
-
-string mySecret = secret.Data.Data["Secret"].ToString()!;
-string myIssuer = secret.Data.Data["Issuer"].ToString()!;
-
 var jwtSettings = new JwtSettings
 {
-    Secret = mySecret,
-    Issuer = myIssuer
+    Secret = builder.Configuration["Jwt:Key"]
+             ?? throw new Exception("Jwt:Key mangler"),
+
+    Issuer = builder.Configuration["Jwt:Issuer"]
+             ?? throw new Exception("Jwt:Issuer mangler")
 };
 
 builder.Services.AddSingleton(jwtSettings);
@@ -63,12 +30,11 @@ builder.Services.AddMassTransit(x =>
 {
     x.UsingRabbitMq((context, cfg) =>
     {
-        cfg.Host(builder.Configuration["RabbitMQ:Host"] ?? "rabbitmq", "/", h =>
+        cfg.Host(builder.Configuration["RabbitMQ:Host"], "/", h =>
         {
-            h.Username("guest");
-            h.Password("guest");
+            h.Username(builder.Configuration["RabbitMQ:Username"] ?? "fitlife");
+            h.Password(builder.Configuration["RabbitMQ:Password"] ?? "fitlife123");
         });
-        cfg.ConfigureEndpoints(context);
     });
 });
 
@@ -107,8 +73,6 @@ if (app.Environment.IsDevelopment())
 
     app.MapScalarApiReference();
 }
-
-app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
