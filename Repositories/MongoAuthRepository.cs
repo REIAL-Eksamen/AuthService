@@ -4,11 +4,13 @@ using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
 using AuthService.Models;
 
+//snakker direkte med DB, henter og gemmer bruger i DB. 
+//forbindelsen sættes op via vault, så vi ikke har følsomme værdier liggende i kode. 
 namespace AuthService.Repositories;
 
 public class MongoAuthRepository : IAuthRepository
 {
-    // Der fortælles her at der sendes UserModel instanser til DB
+    //samling af brugere i db. 
     private readonly IMongoCollection<UserModel> _users;
 
     public MongoAuthRepository(IConfiguration configuration)
@@ -22,13 +24,14 @@ public class MongoAuthRepository : IAuthRepository
         _users = database.GetCollection<UserModel>(collectionName);
     }
     
+    //finder en bruger på mail, returnerer null hvis ikke findes. 
     public async Task<UserModel?> GetByEmailAsync(string email)
     {
         return await _users
             .Find(x => x.Email == email)
             .FirstOrDefaultAsync();
     }
-
+    //gemmer nu bruger i db. 
     public async Task CreateUserAsync(UserModel user)
     {
         await _users.InsertOneAsync(user);

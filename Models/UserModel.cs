@@ -1,6 +1,9 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
+//passwordhash så password aldrig gemmes i klartekst. hash og salt bruges til at skjule det. 
+//role styrer hva brugere har adgang til og user er sat som standard. 
+
 namespace AuthService.Models;
 
 public class UserModel

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
+//bare test, bruges til at tjekke jwt og roller virker som de skal. 
 namespace AuthService.Controllers;
 
 [ApiController]
