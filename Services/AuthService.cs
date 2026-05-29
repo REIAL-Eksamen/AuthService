@@ -13,6 +13,10 @@ using MongoDB.Bson;
 
 namespace AuthService.Services;
 
+//the heeart of authservice, det her vores registrering, login og JWT tokens håndteres. 
+//passwords hasher vi vi med PBKDF2 og et randomt salt, så de ikke gemmes i klartekst. 
+//når bruger registreres, sendes en event videre så andre services kan reagere på det. 
+
 public class AuthService : IAuthService
 {
     private readonly IAuthRepository _repository;
@@ -41,6 +45,7 @@ public class AuthService : IAuthService
 
     public async Task<string?> LoginAsync(LoginDto login)
     {
+        //find brugere, findes den ikke stopper den. 
         var user = await _repository.GetByEmailAsync(login.Email);
 
         if (user == null)
@@ -48,7 +53,7 @@ public class AuthService : IAuthService
 
         if (string.IsNullOrWhiteSpace(login.Password))
             return null;
-
+        //hash det indtastede password med det samme salt som da brugeren blev oprettet. 
         var saltBytes = Convert.FromBase64String(user.Salt);
 
         var hashedInputPassword = Convert.ToBase64String(
@@ -59,6 +64,7 @@ public class AuthService : IAuthService
                 iterationCount: 100000,
                 numBytesRequested: 256 / 8));
 
+        //matcher det ikke det gemte hash, er passwordet forkert. 
         if (hashedInputPassword != user.PasswordHash)
             return null;
 
@@ -70,12 +76,14 @@ public class AuthService : IAuthService
 
     public async Task<bool> RegisterAsync(CreateUserDto createUser)
     {
+        
+        //email må ikke være en der er brugt i forvejen. 
         var existingUser =
             await _repository.GetByEmailAsync(createUser.Email);
 
         if (existingUser != null)
             return false;
-
+        //generer et randomt salt og hash passwordet med det. 
         byte[] saltBytes = new byte[128 / 8];
 
         using (var rng = RandomNumberGenerator.Create())
@@ -106,6 +114,7 @@ public class AuthService : IAuthService
 
         await _repository.CreateUserAsync(newUser);
 
+        //fortæll resten af systemet at en bruger er blevet oprettet! 
         await _publishEndpoint.Publish(new UserRegisteredEvent
         {
             AuthId = authId,
@@ -119,7 +128,8 @@ public class AuthService : IAuthService
 
         return true;
     }
-
+        //laver selve JWT token med brugere id, mail og rolle. 
+        //token udløber efter 15min. 
     private string GenerateJwtToken(
         string userId,
         string email,

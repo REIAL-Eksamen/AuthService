@@ -6,8 +6,44 @@ using AuthService.Repositories;
 using AuthService.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using VaultSharp;
+using VaultSharp.V1.AuthMethods;
+using VaultSharp.V1.AuthMethods.Token;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var httpClientHandler = new HttpClientHandler();
+
+httpClientHandler.ServerCertificateCustomValidationCallback =
+    (message, cert, chain, sslPolicyErrors) => { return true; };
+
+// FORBINDELSEN TIL VAULT
+
+string vaultUrl = Environment.GetEnvironmentVariable("VAULT_ADDR")
+                  ?? throw new Exception("VAULT_ADDR mangler");
+
+string vaultToken = Environment.GetEnvironmentVariable("VAULT_TOKEN")
+                    ?? throw new Exception("VAULT_TOKEN mangler");
+
+IAuthMethodInfo authMethod = new TokenAuthMethodInfo(vaultToken);
+
+var vaultClientSettings = new VaultClientSettings(vaultUrl, authMethod)
+{
+    Namespace = "",
+    MyHttpClientProviderFunc = handler
+    => new HttpClient(httpClientHandler)
+    {
+        BaseAddress = new Uri(vaultUrl)
+    }
+};
+
+IVaultClient vaultClient = new VaultClient(vaultClientSettings);
+
+var secret = await vaultClient.V1.Secrets.KeyValue.V2.
+    ReadSecretAsync(path: "jwt", mountPoint: "secret");
+
+string mySecret = secret.Data.Data["Secret"].ToString()!;
+string myIssuer = secret.Data.Data["Issuer"].ToString()!;
 
 var jwtSettings = new JwtSettings
 {
@@ -26,6 +62,7 @@ builder.Services.AddScoped<IAuthService, AuthService.Services.AuthService>();
 
 builder.Services.AddScoped<IAuthRepository, MongoAuthRepository>();
 
+//sætter RabbitMQ op via masstransit, bruges til at sende events ved bruger oprettelse.
 builder.Services.AddMassTransit(x =>
 {
     x.UsingRabbitMq((context, cfg) =>
@@ -38,6 +75,7 @@ builder.Services.AddMassTransit(x =>
     });
 });
 
+//fortæller applikation at den skal bruge jwt token til at godkende bruger. 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -73,6 +111,8 @@ if (app.Environment.IsDevelopment())
 
     app.MapScalarApiReference();
 }
+
+app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
