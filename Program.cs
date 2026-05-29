@@ -1,6 +1,9 @@
+using MassTransit;
 using Scalar.AspNetCore;
 using System.Text;
 using AuthService.Models;
+using AuthService.Repositories;
+using AuthService.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using VaultSharp;
@@ -49,8 +52,25 @@ var jwtSettings = new JwtSettings
 };
 
 builder.Services.AddSingleton(jwtSettings);
-builder.Services.AddSingleton<AuthService.Services.AuthService>();
-builder.Services.AddHttpClient();
+
+builder.Services.AddScoped<AuthService.Services.AuthService>();
+
+builder.Services.AddScoped<IAuthService, AuthService.Services.AuthService>();
+
+builder.Services.AddScoped<IAuthRepository, MongoAuthRepository>();
+
+builder.Services.AddMassTransit(x =>
+{
+    x.UsingRabbitMq((context, cfg) =>
+    {
+        cfg.Host(builder.Configuration["RabbitMQ:Host"] ?? "rabbitmq", "/", h =>
+        {
+            h.Username("guest");
+            h.Password("guest");
+        });
+        cfg.ConfigureEndpoints(context);
+    });
+});
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -64,7 +84,7 @@ builder.Services
             ValidateIssuerSigningKey = true,
             
             ValidIssuer = jwtSettings.Issuer,
-            ValidAudience = "http://localhost",
+            ValidAudience = "FitLifeUsers",
             
             IssuerSigningKey =
                 new SymmetricSecurityKey(

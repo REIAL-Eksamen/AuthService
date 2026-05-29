@@ -11,21 +11,23 @@
     cap_add:
       - IPC_LOCK
 
-  auth-service:
-    build:
-      context: .
-    ports:
-      - "8080:8080"
-    env_file:
-      - .env
-    depends_on:
-      - vault
-      - user-service
-  
   user-service:
     build:
       context: ../UserService/UserService
     ports:
       - "5047:8080"
-    env_file:
-      - .env
+    environment:
+      ENV_FILE: .env
+    depends_on:
+      - vault
+
+  auth-service:
+    build:
+      context: .
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+    depends_on:
+      - vault
+      - user-service
