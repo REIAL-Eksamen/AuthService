@@ -1,5 +1,8 @@
 namespace FitLife.Events;
 
+//en evenet der fyres af når bruger opretter sig. 
+//bruges til at fortælle resten af systemet at der er en ny bruger. 
+//så andre servics kan oprette deres egne "repræsentation" af brugeren. 
 public class UserRegisteredEvent
 {
     public string AuthId { get; set; } = "";

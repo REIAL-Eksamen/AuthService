@@ -12,13 +12,14 @@ using VaultSharp.V1.AuthMethods.Token;
 
 var builder = WebApplication.CreateBuilder(args);
 
+//SSL calidering er slået fra så vi kan snakke med vault lokalt uden et gyldigt certifikat, 
 var httpClientHandler = new HttpClientHandler();
-
 httpClientHandler.ServerCertificateCustomValidationCallback =
     (message, cert, chain, sslPolicyErrors) => { return true; };
 
 // FORBINDELSEN TIL VAULT
-
+//henter jwt hemmeligheder fra vault via environment variables. 
+//vault_addr og vault_token skal være sat, ellers crasher det hele:(
 string vaultUrl = Environment.GetEnvironmentVariable("VAULT_ADDR")
                   ?? throw new Exception("VAULT_ADDR mangler");
 
@@ -39,6 +40,7 @@ var vaultClientSettings = new VaultClientSettings(vaultUrl, authMethod)
 
 IVaultClient vaultClient = new VaultClient(vaultClientSettings);
 
+//henter secret og issuer fra vault, bruges til at signere og validere jwt tokens. 
 var secret = await vaultClient.V1.Secrets.KeyValue.V2.
     ReadSecretAsync(path: "jwt", mountPoint: "secret");
 
@@ -59,6 +61,7 @@ builder.Services.AddScoped<IAuthService, AuthService.Services.AuthService>();
 
 builder.Services.AddScoped<IAuthRepository, MongoAuthRepository>();
 
+//sætter RabbitMQ op via masstransit, bruges til at sende events ved bruger oprettelse.
 builder.Services.AddMassTransit(x =>
 {
     x.UsingRabbitMq((context, cfg) =>
@@ -72,6 +75,7 @@ builder.Services.AddMassTransit(x =>
     });
 });
 
+//fortæller applikation at den skal bruge jwt token til at godkende bruger. 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

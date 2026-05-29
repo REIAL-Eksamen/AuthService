@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using AuthService.DTOs;
 using AuthService.Services;
 
+
+//håndterer registrering og login. 
 namespace AuthService.Controllers;
 
 [ApiController]
@@ -15,7 +17,7 @@ public class AuthController : ControllerBase
     {
         _db = db;
     }
-
+    //logger bruger ind og returnerer jwt token hvis mail og password matcher.
     [HttpPost("login")]
     [AllowAnonymous]
     public async Task<IActionResult> Login([FromBody] LoginDto login)
@@ -31,6 +33,7 @@ public class AuthController : ControllerBase
         });
     }
 
+    //opretter ny bruger, fejler hvis mail i brug allerde. 
     [HttpPost("register")]
     [AllowAnonymous]
     public async Task<IActionResult> Register([FromBody] CreateUserDto createUser)
